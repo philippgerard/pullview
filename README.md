@@ -1,6 +1,6 @@
 # PullView
 
-A macOS menu bar app that lists your open GitHub pull requests in 3 sections: created by you, assigned to you, and waiting for your review.
+A macOS menu bar app that lists your open GitHub pull requests in 3 sections: Your Pull Requests, Assigned to You, and Waiting for Your Review.
 Each PR shows its review decision, CI checks, merge queue position and ETA, auto-merge or "merge when ready", native GitHub stack position, and conflicts.
 Hovering a row shows a chevron that lists its failing and running checks, the branch, and the PRs in its stack.
 
@@ -22,6 +22,7 @@ To skip the CLI, open Settings (⌘, in the popover), choose Account, and paste 
 PullView stores that token in your keychain.
 
 Settings also sets the refresh interval (30 s to 10 min, default 1 min) and opening at login.
+Recently Merged lists your PRs merged in the last 1 to 7 days (Settings, default 3), grouped by stack.
 
 ## Build from source
 

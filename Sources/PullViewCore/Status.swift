@@ -6,8 +6,9 @@ public struct CheckSummary: Sendable, Equatable {
 }
 
 public struct Badge: Sendable, Hashable {
-    /// Color is reserved for these three states. Everything else renders secondary.
-    public enum Tone: Sendable { case neutral, failing, running, merging }
+    /// Each state has one color: failing red, running orange, merging purple, passing green, waiting for review blue.
+    /// Drafts and plain facts stay gray. Every colored state also has its own symbol or word, so color is never the only cue.
+    public enum Tone: Sendable { case neutral, failing, running, merging, passing, waiting }
     public var symbol: String? = nil
     public let text: String
     public var tone: Tone = .neutral
@@ -48,6 +49,8 @@ extension PullRequest {
 
     /// The leading-column glyph. The most urgent state wins: failing, merging, running, then quiet states.
     public var status: Badge {
+        // Merged PRs keep stale DIRTY, REVIEW_REQUIRED and FAILURE values, so merged wins over all of them.
+        if mergedAt != nil { return Badge(symbol: "arrow.triangle.merge", text: "Merged", tone: .merging) }
         let s = checkSummary
         var problems: [String] = []
         if mergeQueueEntry?.state == "UNMERGEABLE" { problems.append("Unmergeable in merge queue") }
@@ -65,24 +68,27 @@ extension PullRequest {
             return Badge(text: s.pending > 0 ? "\(s.total - s.pending) of \(s.total) checks done" : "Checks running", tone: .running)
         }
         if isDraft { return Badge(symbol: "circle.dashed", text: "Draft") }
-        if reviewDecision == "REVIEW_REQUIRED" { return Badge(symbol: "circle", text: "Waiting for review") }
-        return Badge(symbol: "checkmark.circle", text: s.total > 0 ? "Checks passed, no blockers" : "No blockers")
+        if reviewDecision == "REVIEW_REQUIRED" { return Badge(symbol: "eye.circle", text: "Waiting for review", tone: .waiting) }
+        return Badge(symbol: "checkmark.circle.fill", text: s.total > 0 ? "Checks passed, no blockers" : "No blockers", tone: .passing)
     }
 
     /// Short facts for the secondary line. Passing checks are omitted; the details list them.
     public var facts: [Badge] {
+        let stackFact = stack.flatMap { s in stackEntry.map { Badge(text: "Stack \($0.position)/\(s.size)") } }
+        // Review, checks and conflicts are stale after a merge.
+        if mergedAt != nil { return stackFact.map { [$0] } ?? [] }
         var out: [Badge] = []
         if isDraft { out.append(Badge(text: "Draft")) }
         switch reviewDecision {
-        case "APPROVED": out.append(Badge(text: "Approved"))
+        case "APPROVED": out.append(Badge(text: "Approved", tone: .passing))
         case "CHANGES_REQUESTED": out.append(Badge(text: "Changes requested", tone: .failing))
-        case "REVIEW_REQUIRED": out.append(Badge(text: "Review required"))
+        case "REVIEW_REQUIRED": out.append(Badge(text: "Review required", tone: .waiting))
         default: break
         }
         let s = checkSummary
         if checksFailing { out.append(Badge(text: s.failed > 0 ? "\(s.failed) failed" : "Checks failed", tone: .failing)) }
         if s.pending > 0 { out.append(Badge(text: "\(s.pending) running", tone: .running)) }
-        if let stack, let stackEntry { out.append(Badge(text: "Stack \(stackEntry.position)/\(stack.size)")) }
+        if let stackFact { out.append(stackFact) }
         if mergeQueueEntry == nil {
             switch mergeStateStatus {
             case "DIRTY": out.append(Badge(text: "Conflicts", tone: .failing))
@@ -103,8 +109,7 @@ extension PullRequest {
             let eta = q.estimatedTimeToMerge.map { " · ~\(Self.duration($0))" } ?? ""
             let tone: Badge.Tone = switch q.state {
             case "UNMERGEABLE": .failing
-            case "MERGEABLE": .merging
-            default: .neutral
+            default: .merging
             }
             return Badge(symbol: "list.number", text: "\(q.position)\(eta)", tone: tone,
                          help: "Merge queue #\(q.position) · \(state)\(eta)")
@@ -112,13 +117,33 @@ extension PullRequest {
         guard let auto = autoMergeRequest else { return nil }
         // With a merge queue, "merge when ready" is the auto-merge request that enqueues the PR.
         return isMergeQueueEnabled
-            ? Badge(symbol: "bolt.fill", text: "When ready", help: "Merge when ready")
-            : Badge(symbol: "bolt.fill", text: "Auto-merge", help: "Auto-merge (\(auto.mergeMethod.lowercased()))")
+            ? Badge(symbol: "bolt.fill", text: "When ready", tone: .merging, help: "Merge when ready")
+            : Badge(symbol: "bolt.fill", text: "Auto-merge", tone: .merging, help: "Auto-merge (\(auto.mergeMethod.lowercased()))")
     }
 
     static func duration(_ seconds: Int) -> String {
         if seconds < 60 { return "\(seconds)s" }
         if seconds < 3600 { return "\(seconds / 60)m" }
         return "\(seconds / 3600)h \(seconds % 3600 / 60)m"
+    }
+}
+
+extension Array where Element == PullRequest {
+    /// One group per stack with 2+ listed members, else one group per PR. A group keeps its first member's slot
+    /// and lists members by stack position, so the PR that merges first leads.
+    public func groupedByStack() -> [[PullRequest]] {
+        var groups: [[PullRequest]] = []
+        var slot: [String: Int] = [:]
+        for pr in self {
+            let key = pr.stackEntry == nil ? pr.id : pr.stack?.id ?? pr.id
+            if let i = slot[key] { groups[i].append(pr) } else { slot[key] = groups.count; groups.append([pr]) }
+        }
+        return groups.map { $0.sorted { ($0.stackEntry?.position ?? 0) < ($1.stackEntry?.position ?? 0) } }
+    }
+
+    /// Failing, then merging, then running, as `status` ranks them. `min` keeps the first of equals.
+    public var mostUrgent: PullRequest? {
+        func rank(_ pr: PullRequest) -> Int { [.failing: 0, .merging: 1, .running: 2][pr.status.tone] ?? 3 }
+        return self.min { rank($0) < rank($1) }
     }
 }

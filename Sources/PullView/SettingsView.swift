@@ -18,6 +18,7 @@ struct SettingsView: View {
 private struct GeneralSettings: View {
     let store: PRStore
     @AppStorage(PRStore.intervalKey) private var interval = 60
+    @AppStorage(PRStore.mergedDaysKey) private var mergedDays = 3
     @State private var loginStatus = SMAppService.mainApp.status
     @State private var loginError: String?
 
@@ -29,6 +30,10 @@ private struct GeneralSettings: View {
                 Text("Every 2 minutes").tag(120)
                 Text("Every 5 minutes").tag(300)
                 Text("Every 10 minutes").tag(600)
+            }
+            Picker("Recently Merged:", selection: $mergedDays) {
+                Text("Last day").tag(1)
+                ForEach(2...7, id: \.self) { Text("Last \($0) days").tag($0) }
             }
             LabeledContent("Startup:") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -47,6 +52,7 @@ private struct GeneralSettings: View {
         .formStyle(.columns)
         .padding(20)
         .onChange(of: interval) { store.start() }
+        .onChange(of: mergedDays) { store.refetch() }
         .onAppear { loginStatus = SMAppService.mainApp.status }
     }
 

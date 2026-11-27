@@ -8,9 +8,11 @@ public struct PullRequest: Decodable, Identifiable, Sendable, Hashable {
     public let url: URL
     public let isDraft: Bool
     public let createdAt: Date
+    public let mergedAt: Date?
     public let additions: Int
     public let deletions: Int
     public let author: Login?
+    public let mergedBy: Login?
     public let repository: Repository
     public let baseRefName: String
     public let headRefName: String
@@ -63,6 +65,7 @@ public struct QueueEntry: Decodable, Sendable, Hashable {
 }
 
 public struct Stack: Decodable, Sendable, Hashable {
+    public let id: String
     public let size: Int
     public let entries: Nodes<Entry>
 
@@ -139,14 +142,16 @@ public struct Sections: Decodable, Sendable, Hashable {
     public let created: [PullRequest]
     public let assigned: [PullRequest]
     public let review: [PullRequest]
+    /// The viewer's PRs merged in the chosen window, newest merge first. Not part of `all`.
+    public let merged: [PullRequest]
     /// Search match counts; above the list length when a section is capped.
-    public let createdTotal: Int, assignedTotal: Int, reviewTotal: Int
+    public let createdTotal: Int, assignedTotal: Int, reviewTotal: Int, mergedTotal: Int
     /// GraphQL errors that came back next to usable data, e.g. one org blocking the token.
     public internal(set) var warning: String?
     /// The account the token belongs to.
     public let viewer: Login?
 
-    private enum Key: CodingKey { case created, assigned, review, viewer }
+    private enum Key: CodingKey { case created, assigned, review, merged, viewer }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Key.self)
@@ -158,6 +163,10 @@ public struct Sections: Decodable, Sendable, Hashable {
         createdTotal = created.totalCount ?? created.nodes.count
         assignedTotal = assigned.totalCount ?? assigned.nodes.count
         reviewTotal = review.totalCount ?? review.nodes.count
+        let merged = try c.decode(Nodes<PullRequest>.self, forKey: .merged)
+        // Search cannot sort by merge time; newest merge first, so groupedByStack puts the latest group on top.
+        self.merged = merged.nodes.sorted { ($0.mergedAt ?? .distantPast) > ($1.mergedAt ?? .distantPast) }
+        mergedTotal = merged.totalCount ?? merged.nodes.count
     }
 
     public var all: [PullRequest] { created + assigned + review }
