@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     let store: PRStore
     @State private var listHeight: CGFloat = 0
+    @State private var height: CGFloat = 0
     @State var hover = DetailHover()
 
     var body: some View {
@@ -22,6 +23,8 @@ struct ContentView: View {
                 .onHover { if $0 { hover.close() } } // like moving from a submenu's parent to another menu item
         }
         .frame(width: 480)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        .background(WindowHeight(height: height))
         .onAppear {
             // Opening the menu shows fresh data unless the last fetch is very recent.
             if (store.lastUpdated?.timeIntervalSinceNow ?? -.infinity) < -15 { Task { await store.refresh() } }
@@ -30,7 +33,8 @@ struct ContentView: View {
     }
 
     @ViewBuilder private var list: some View {
-        LazyVStack(alignment: .leading, spacing: 0) {
+        // Not lazy: a lazy stack reports estimated heights, which left the window a few points off the list.
+        VStack(alignment: .leading, spacing: 0) {
             if let sections = store.sections {
                 if sections.all.isEmpty {
                     Text("No Open Pull Requests")
@@ -178,6 +182,46 @@ extension View {
         frame(height: min(max(contentHeight, 48), maxHeight))
             .scrollIndicators(contentHeight > maxHeight ? .automatic : .never)
             .scrollBounceBehavior(.basedOnSize)
+    }
+}
+
+/// MenuBarExtra grows its window with the content but never shrinks it, so a list that lost a row would sit
+/// centered in the old outline. This sets the window to the content's height and keeps its top edge under the menu bar.
+private struct WindowHeight: NSViewRepresentable {
+    let height: CGFloat
+
+    func makeNSView(context: Context) -> Sizer { Sizer() }
+
+    func updateNSView(_ view: Sizer, context: Context) {
+        view.height = height
+        // After this update, because resizing the window lays the content out again.
+        DispatchQueue.main.async { view.apply() }
+    }
+
+    final class Sizer: NSView {
+        /// The latest height. An opening list settles over a few passes, and an older pass must not resize the window back.
+        var height: CGFloat = 0
+        private var observer: NSObjectProtocol?
+
+        /// MenuBarExtra can grow the window after the content already shrank again, so every resize is checked.
+        override func viewDidMoveToWindow() {
+            observer.map(NotificationCenter.default.removeObserver)
+            observer = window.map { window in
+                NotificationCenter.default.addObserver(forName: NSWindow.didResizeNotification, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.apply() }
+                }
+            }
+        }
+
+        func apply() {
+            // Growing is left to MenuBarExtra. Its own height can differ from this one by a point of rounding.
+            guard let window, height > 0, window.frame.height - height > 1 else { return }
+            var frame = window.frame
+            frame.origin.y = frame.maxY - height
+            frame.size.height = height
+            window.setFrame(frame, display: true)
+            window.invalidateShadow() // the shadow would keep the old outline
+        }
     }
 }
 
