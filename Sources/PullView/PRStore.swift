@@ -28,6 +28,13 @@ final class PRStore {
 
     init() { start() }
 
+    /// Fixed data and no polling, for the README screenshots.
+    init(sections: Sections, details: [PullRequest.ID: PRDetail]) {
+        self.sections = sections
+        self.details = details.mapValues { ($0, .now) }
+        lastUpdated = .now
+    }
+
     var interval: Int {
         let value = UserDefaults.standard.integer(forKey: Self.intervalKey)
         return value == 0 ? 60 : max(value, 15)

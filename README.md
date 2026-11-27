@@ -1,8 +1,24 @@
+<p align="center"><img src="docs/icon.png" width="128" height="128" alt="PullView icon"></p>
+
 # PullView
 
 A macOS menu bar app that lists your open GitHub pull requests in 3 sections: Your Pull Requests, Assigned to You, and Waiting for Your Review.
 Each PR shows its review decision, CI checks, merge queue position and ETA, auto-merge or "merge when ready", native GitHub stack position, and conflicts.
 Hovering a row shows a chevron that lists its failing and running checks, the branch, and the PRs in its stack.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/details-dark.png">
+  <img src="docs/details-light.png" width="1000" alt="The PullView menu with 3 sections of pull requests, and the details of one PR beside it: branch, changes, reviewers and checks">
+</picture>
+
+PRs in a GitHub stack share one row, which opens the stack in merge order.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/stack-dark.png">
+  <img src="docs/stack-light.png" width="934" alt="A stack row in the PullView menu, and its 4 pull requests listed beside it">
+</picture>
+
+The screenshots show sample data.
 
 Requires macOS 14 or newer, on Apple Silicon or Intel.
 
@@ -34,6 +50,7 @@ open build/PullView.app
 ```sh
 swift test                                   # offline decoding and status tests
 PULLVIEW_LIVE=1 swift test --filter live     # one real fetch with your token
+PULLVIEW_SCREENSHOTS=docs swift test --filter screenshots   # redraw the README screenshots from sample data
 ```
 
 ## Release

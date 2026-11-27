@@ -158,12 +158,12 @@ extension Badge.Tone {
 
 /// The second level: one stack's listed members, merging first. Each member row opens its details further left
 /// through its own `DetailHover`, so the stack list stays open while the pointer moves between its rows.
-private struct StackList: View {
+struct StackList: View {
     let members: [PullRequest]
     let store: PRStore
     let showAuthor: Bool
     let showRequest: Bool
-    @State private var inner = DetailHover()
+    @State var inner = DetailHover()
     @State private var height: CGFloat = 0
 
     var body: some View {
@@ -246,7 +246,7 @@ private struct StatusGlyph: View {
 }
 
 /// The hover inspector, laid out like Calendar's event popover: header, info grid, reviews, checks, stack.
-private struct PRDetails: View {
+struct PRDetails: View {
     let pr: PullRequest
     let store: PRStore
     let showRequest: Bool

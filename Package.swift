@@ -8,5 +8,6 @@ let package = Package(
         .target(name: "PullViewCore"),
         .executableTarget(name: "PullView", dependencies: ["PullViewCore"]),
         .testTarget(name: "PullViewCoreTests", dependencies: ["PullViewCore"]),
+        .testTarget(name: "PullViewScreenshots", dependencies: ["PullView", "PullViewCore"]),
     ]
 )

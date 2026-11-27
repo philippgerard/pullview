@@ -4,7 +4,7 @@ import SwiftUI
 struct ContentView: View {
     let store: PRStore
     @State private var listHeight: CGFloat = 0
-    @State private var hover = DetailHover()
+    @State var hover = DetailHover()
 
     var body: some View {
         VStack(spacing: 0) {
