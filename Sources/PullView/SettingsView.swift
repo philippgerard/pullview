@@ -10,6 +10,8 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
             AccountSettings(store: store)
                 .tabItem { Label("Account", systemImage: "person.crop.circle") }
+            AboutSettings()
+                .tabItem { Label("About", systemImage: "info.circle") }
         }
         .frame(width: 500)
     }
@@ -152,5 +154,40 @@ private struct AccountSettings: View {
             draft = value
             store.credentialsChanged()
         }
+    }
+}
+
+private struct AboutSettings: View {
+    private static let repository = "https://github.com/philippgerard/pullview"
+    /// Nil when run outside the app bundle, e.g. with `swift run`.
+    private let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 24) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 96, height: 96)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("PullView").font(.title2.weight(.semibold))
+                if let version {
+                    Text("Version \(version)").foregroundStyle(.secondary).textSelection(.enabled)
+                }
+                Text("A menu bar app for your GitHub pull requests: merge queue, stacks, auto-merge and CI checks at a glance.")
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 4)
+                link("GitHub Repository", "")
+                link("Release Notes", "/releases")
+                link("License", "/blob/main/LICENSE")
+                link("Report an Issue", "/issues/new")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 32)
+        .padding(.vertical, 24)
+    }
+
+    @ViewBuilder private func link(_ title: LocalizedStringKey, _ path: String) -> some View {
+        if let url = URL(string: Self.repository + path) { Link(title, destination: url) }
     }
 }
