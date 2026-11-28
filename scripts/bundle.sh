@@ -1,14 +1,14 @@
 #!/bin/sh
-# Builds build/PullView.app: a universal, menu-bar-only (LSUIElement) bundle.
+# Builds build/PullView.app: a menu-bar-only (LSUIElement) bundle for Apple silicon.
 # VERSION sets the bundle version. SIGN_IDENTITY picks a codesigning identity; the default "-" signs ad hoc.
 set -eu
 cd "$(dirname "$0")/.."
 VERSION="${VERSION:-0.0.0}"
 IDENTITY="${SIGN_IDENTITY:--}"
-ARCHS="--arch arm64 --arch x86_64"
+ARCH="--arch arm64"
 
-swift build -c release $ARCHS
-BIN="$(swift build -c release $ARCHS --show-bin-path)"
+swift build -c release $ARCH
+BIN="$(swift build -c release $ARCH --show-bin-path)"
 
 APP=build/PullView.app
 rm -rf "$APP"

@@ -20,7 +20,7 @@ PRs in a GitHub stack share one row, which opens the stack in merge order.
 
 The screenshots show sample data.
 
-Requires macOS 14 or newer, on Apple Silicon or Intel.
+Requires macOS 14 or newer on Apple silicon.
 
 ## Install
 
@@ -43,7 +43,7 @@ Recently Merged lists your PRs merged in the last 1 to 7 days (Settings, default
 ## Build from source
 
 ```sh
-./scripts/bundle.sh          # universal build/PullView.app, signed ad hoc
+./scripts/bundle.sh          # build/PullView.app, signed ad hoc
 open build/PullView.app
 ```
 
